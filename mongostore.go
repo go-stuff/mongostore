@@ -189,7 +189,7 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 	// plus the specified number of seconds.
 	//
 	// The _id field does not support TTL indexes.
-	if foundTTLIndex == false {
+	if !foundTTLIndex {
 		_, err = ms.col.Indexes().CreateOne(
 			ms.ctx,
 			mongo.IndexModel{
