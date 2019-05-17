@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.com/go-stuff/mongostore.svg?branch=master)](https://travis-ci.com/go-stuff/mongostore)
+[![codecov](https://codecov.io/gh/go-stuff/mongostore/branch/master/graph/badge.svg)](https://codecov.io/gh/go-stuff/mongostore)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # mongostore
 
