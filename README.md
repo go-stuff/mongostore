@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/go-stuff/mongostore.svg?branch=master)](https://travis-ci.com/go-stuff/mongostore)
+
 # mongostore
 
 An implementation of the [Gorilla web toolkit sessions](https://github.com/gorilla/sessions) for the [MongoDB Go Driver](https://github.com/mongodb/mongo-go-driver)
