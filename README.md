@@ -24,3 +24,4 @@ import (
 ```
 
 ## License
+[MIT](LICENSE)
