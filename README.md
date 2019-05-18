@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/go-stuff/mongostore/branch/master/graph/badge.svg)](https://codecov.io/gh/go-stuff/mongostore)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An implementation of the [Gorilla web toolkit sessions](https://github.com/gorilla/sessions) for the [MongoDB Go Driver](https://github.com/mongodb/mongo-go-driver)
+An implementation of Store using [Gorilla web toolkit sessions](https://github.com/gorilla/sessions) and the [MongoDB Go Driver](https://github.com/mongodb/mongo-go-driver)
 
 ## Requirements
 
