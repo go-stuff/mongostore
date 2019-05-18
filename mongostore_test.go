@@ -141,6 +141,7 @@ func TestSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get session: %v\n", err)
 	}
+	session.Values["test"] = "testdata"
 	err = mongostore.Save(req, res, session)
 	if err != nil {
 		t.Fatalf("failed to insert session: %v\n", err)
