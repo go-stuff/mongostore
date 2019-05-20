@@ -76,7 +76,10 @@ func TestNewMongoStore(t *testing.T) {
 	os.Setenv("GORILLA_SESSION_ENC_KEY", "")
 
 	// without TTL index
-	mongoclient.Database("test").Collection("sessions_test").Indexes().DropAll(context.TODO())
+	_, err = mongoclient.Database("test").Collection("sessions_test").Indexes().DropAll(context.TODO())
+	if err != nil {
+		t.Fatal("failed to drop mongo indexes")
+	}
 
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
