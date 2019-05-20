@@ -75,12 +75,6 @@ func TestNewMongoStore(t *testing.T) {
 	os.Setenv("GORILLA_SESSION_AUTH_KEY", "")
 	os.Setenv("GORILLA_SESSION_ENC_KEY", "")
 
-	// without TTL index
-	_, err = mongoclient.Database("test").Collection("sessions_test").Indexes().DropAll(context.TODO())
-	if err != nil {
-		t.Fatalf("failed to drop mongo indexes: %v\n", err)
-	}
-
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
 		mongoclient.Database("test").Collection("sessions_test"),
@@ -91,6 +85,12 @@ func TestNewMongoStore(t *testing.T) {
 
 	if mongostore == nil {
 		t.Fatal("expected to fail with no environment variables")
+	}
+
+	// without TTL index
+	_, err = mongoclient.Database("test").Collection("sessions_test").Indexes().DropAll(context.TODO())
+	if err != nil {
+		t.Fatalf("failed to drop mongo indexes: %v\n", err)
 	}
 
 	// with environment variables
