@@ -37,10 +37,12 @@ func TestMain(m *testing.M) {
 
 func testsSetup() {
 	// set needed environment variables if none are set
-	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
+	_, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
+	if !ok {
 		os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
 	}
-	if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
+	_, ok = os.LookupEnv("GORILLA_SESSION_ENC_KEY")
+	if !ok {
 		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
 	}
 

@@ -37,11 +37,15 @@ type MongoStore struct {
 // The encryption key, if set, must be either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256 modes.
 func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoStore {
-	// set needed environment variables if none are set
-	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
+	// set authentication key environment variables if it is not set
+	_, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
+	if !ok {
 		os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
 	}
-	if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
+
+	// set encryption key environment variable if it is not set
+	_, ok = os.LookupEnv("GORILLA_SESSION_ENC_KEY")
+	if !ok {
 		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
 	}
 
