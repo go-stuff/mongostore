@@ -75,6 +75,9 @@ func TestNewMongoStore(t *testing.T) {
 	os.Setenv("GORILLA_SESSION_AUTH_KEY", "")
 	os.Setenv("GORILLA_SESSION_ENC_KEY", "")
 
+	// without TTL index
+	mongoclient.Database("test").Collection("sessions_test").Indexes().DropAll(context.TODO())
+
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
 		mongoclient.Database("test").Collection("sessions_test"),
