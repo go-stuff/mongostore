@@ -29,6 +29,19 @@ import (
 )
 ```
 
+## Environment Variables
+
+The `go-stuff\mongostore` package uses two environment variables for authentication and encryption. If those keys are not alerady part of the `environment`, they will be generated each time `NewMongoStore` is run.  
+
+A better solution would be to add permanent keys to the `environment`. The [gorilla toolkit](https://www.gorillatoolkit.org/pkg/securecookie#GenerateRandomKey) provides a way to generate random keys using [func GenerateRandomKey](https://www.gorillatoolkit.org/pkg/securecookie#GenerateRandomKey).
+
+```bash
+GORILLA_SESSION_AUTH_KEY (32 bytes)
+GORILLA_SESSION_ENC_KEY  (16 bytes)
+```
+
+Once the keys added to the `environment`, sessions and cookies will be maintained each time `NewMongoStore` is run. Messages like `securecookie: the value is not valid` will be avoided, this happens when previously created cookies, still in the browser, used different authentication and encryption keys.
+
 ## License
 
 [MIT License](LICENSE)
