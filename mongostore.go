@@ -37,16 +37,22 @@ type MongoStore struct {
 // The encryption key, if set, must be either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256 modes.
 func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoStore {
-	// set authentication key environment variables if it is not set
-	_, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
+	// does the environment variable exist
+	gorillaSessionAuthKey, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
 	if !ok {
-		os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
+		// if empty set a default
+		if gorillaSessionAuthKey == "" {
+			os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
+		}
 	}
 
-	// set encryption key environment variable if it is not set
-	_, ok = os.LookupEnv("GORILLA_SESSION_ENC_KEY")
+	// does the environment variable exist
+	gorillaSessionEncKey, ok := os.LookupEnv("GORILLA_SESSION_ENC_KEY")
 	if !ok {
-		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
+		// if empty set a defaul
+		if gorillaSessionEncKey == "" {
+			os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
+		}
 	}
 
 	ms := &MongoStore{
@@ -162,14 +168,14 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 	// search for an index-ttl index in this collection
 	cursor, err := ms.col.Indexes().List(ms.ctx)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	var foundTTLIndex bool
 	for cursor.Next(ms.ctx) {
 		var result bson.D
 		err := cursor.Decode(&result)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		if result.Map()["name"] == "modifiedAt_1" {
 			foundTTLIndex = true
@@ -207,7 +213,7 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 			},
 		)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 

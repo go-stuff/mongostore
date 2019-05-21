@@ -36,15 +36,16 @@ func TestMain(m *testing.M) {
 }
 
 func testsSetup() {
+
 	// set needed environment variables if none are set
-	_, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
-	if !ok {
-		os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
-	}
-	_, ok = os.LookupEnv("GORILLA_SESSION_ENC_KEY")
-	if !ok {
-		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
-	}
+	// _, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
+	// if !ok {
+	os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
+	// }
+	// _, ok = os.LookupEnv("GORILLA_SESSION_ENC_KEY")
+	// if !ok {
+	os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
+	// }
 
 	// A Context carries a deadline, cancelation signal, and request-scoped values
 	// across API boundaries. Its methods are safe for simultaneous use by multiple
@@ -74,8 +75,7 @@ func testsTeardown() {
 
 func TestNewMongoStore(t *testing.T) {
 	// without environment variables
-	os.Setenv("GORILLA_SESSION_AUTH_KEY", "")
-	os.Setenv("GORILLA_SESSION_ENC_KEY", "")
+	os.Clearenv()
 
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
