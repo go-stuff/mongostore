@@ -7,6 +7,10 @@ steps:
   commands:
   - sleep 5
   - mongo --host mongo --eval "db.version()"
+- name: test
+  image: golang
+  commands:
+  - go test
 
 services:
 - name: mongo
@@ -14,9 +18,3 @@ services:
   command: [ --smallfiles ]
   ports:
   - 27017
-
-steps:
-- name: test
-  image: golang
-  commands:
-  - go test
