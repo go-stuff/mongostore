@@ -2,10 +2,6 @@ kind: pipeline
 name: default
 
 steps:
-- name: test
-  image: golang
-  commands:
-  - go test  
 - name: ping
   image: mongo:4
   commands:
@@ -18,3 +14,9 @@ services:
   command: [ --smallfiles ]
   ports:
   - 27017
+
+steps:
+- name: test
+  image: golang
+  commands:
+  - go test
