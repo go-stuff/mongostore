@@ -53,7 +53,7 @@ Once the keys added to the `environment`, sessions and cookies will be maintaine
 
 ## Example
 
-The [github.com/go-stuff/web](https://github.com/go-stuff/web) repository uses [github.com/go-stuff/mongostore](https://github.com/go-stuff/mongostore) you can this example code to see how it is used.
+The [github.com/go-stuff/web](https://github.com/go-stuff/web) repository uses [github.com/go-stuff/mongostore](https://github.com/go-stuff/mongostore) you can browse this example code to see how it is used.
 
 ## License
 
