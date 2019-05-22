@@ -11,7 +11,7 @@ steps:
 - name: test
   image: golang:latest
   environment:
-    - MONGODB_URI="mongodb://mongo:27017"
+    - MONGODB_URI: mongodb://mongo:27017
   commands:
   - go test -race -coverprofile=coverage.txt -covermode=atomic
 
