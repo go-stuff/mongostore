@@ -10,9 +10,8 @@ steps:
 
 - name: test
   image: golang:latest
-  settings:
-    token:
-      from_secret: MONGODB_URI
+  environment:
+    - MONGODB_URI=mongodb://mongo:27017
   commands:
   - go test -race -coverprofile=coverage.txt -covermode=atomic
 
