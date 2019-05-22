@@ -36,22 +36,9 @@ func TestMain(m *testing.M) {
 }
 
 func testsSetup() {
-	// set needed environment variables if none are set
-	//"http://localhost:8080/"
-	//
 	// if environment variable is does not exist or is empty set a default
 	if os.Getenv("MONGODB_URI") == "" {
 		os.Setenv("MONGODB_URI", "mongodb://localhost:27017")
-	}
-
-	// if environment variable is does not exist or is empty set a default
-	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
-		os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
-	}
-
-	// if environment variable is does not exist or is empty set a default
-	if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
-		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
 	}
 
 	// A Context carries a deadline, cancelation signal, and request-scoped values
@@ -82,7 +69,9 @@ func testsTeardown() {
 
 func TestNewMongoStore(t *testing.T) {
 	// without environment variables
-	//os.Clearenv()
+	// os.Clearenv()
+	os.Setenv("GORILLA_SESSION_AUTH_KEY", "")
+	os.Setenv("GORILLA_SESSION_ENC_KEY", "")
 
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
@@ -103,9 +92,15 @@ func TestNewMongoStore(t *testing.T) {
 	}
 
 	// with environment variables
-	// os.Setenv("MONGODB_URI", "mongodb://localhost:27017")
-	// os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
-	// os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
+	// if environment variable is does not exist or is empty set a default
+	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
+		os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
+	}
+
+	// if environment variable is does not exist or is empty set a default
+	if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
+		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
+	}
 
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(

@@ -10,10 +10,17 @@
 
 An implementation of Store using [Gorilla web toolkit sessions](https://github.com/gorilla/sessions) and the [MongoDB Go Driver](https://github.com/mongodb/mongo-go-driver)
 
-## Requirements
+## Packages Imported
 
-- Gorilla web toolkit sessions [https://github.com/gorilla/sessions](https://github.com/gorilla/sessions)
-- MongoDB Go Driver [https://github.com/mongodb/mongo-go-driver/](https://github.com/mongodb/mongo-go-driver/)
+- Gorilla web tookit ["github.com/gorilla"]("github.com/gorilla")
+  - securecookie
+  - sessions
+- MongoDB Go Driver [https://github.com/mongodb/mongo-go-driver/](https://github.com/mongodb/mongo-go-driver)
+  - bson
+  - bson/primitive
+  - mongo
+  - mongo/options
+  - x/bsonx
 
 ## Installation
 
