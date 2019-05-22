@@ -1,6 +1,7 @@
 # mongostore
 
 [![GoDoc](https://godoc.org/github.com/go-stuff/mongostore?status.svg)](https://godoc.org/github.com/go-stuff/mongostore)
+[![Build Status](https://cloud.drone.io/api/badges/go-stuff/mongostore/status.svg)](https://cloud.drone.io/go-stuff/mongostore)
 [![Build Status](https://travis-ci.com/go-stuff/mongostore.svg?branch=master)](https://travis-ci.com/go-stuff/mongostore)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-stuff/mongostore)](https://goreportcard.com/report/github.com/go-stuff/mongostore)
 [![codecov](https://codecov.io/gh/go-stuff/mongostore/branch/master/graph/badge.svg)](https://codecov.io/gh/go-stuff/mongostore)

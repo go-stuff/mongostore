@@ -7,11 +7,19 @@ steps:
   commands:
   - sleep 60
   - mongo --host mongo --eval "db.version()"
+
 - name: test
-  image: golang
+  image: golang:latest
   commands:
-  - sleep 60
-  - go test
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+- name: coverage
+  image: plugins/codecov
+  settings: 
+    token:
+      from_secret: CODECOV_TOKEN
+    files:
+    - coverage.txt
 
 services:
 - name: mongo
