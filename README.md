@@ -12,19 +12,19 @@ An implementation of Store using [Gorilla web toolkit sessions](https://github.c
 
 ## Packages Imported
 
-- Gorilla web tookit ["github.com/gorilla"]("github.com/gorilla")
-  - securecookie
-  - sessions
-- MongoDB Go Driver [https://github.com/mongodb/mongo-go-driver/](https://github.com/mongodb/mongo-go-driver)
-  - bson
-  - bson/primitive
-  - mongo
-  - mongo/options
-  - x/bsonx
+- Gorilla web tookit [github.com/gorilla](https://github.com/gorilla)
+  - [securecookie](https://github.com/gorilla/securecookie)
+  - [sessions](https://github.com/gorilla/sessions)
+- MongoDB Go Driver [github.com/mongodb/mongo-go-driver](https://github.com/mongodb/mongo-go-driver)
+  - [bson](https://github.com/mongodb/mongo-go-driver/bson)
+  - [bson/primitive](https://github.com/mongodb/mongo-go-driver/bson/primitive)
+  - [mongo](https://github.com/mongodb/mongo-go-driver/mongo)
+  - [mongo/options](https://github.com/mongodb/mongo-go-driver/mongo/options)
+  - [x/bsonx](https://github.com/mongodb/mongo-go-driver/x/bsonx)
 
 ## Installation
 
-The recommended way to get started using [mongostore](https://github.com/go-stuff/mongostore) is by using 'go get' to install the dependency in your project.
+The recommended way to get started using [github.com/go-stuff/mongostore](https://github.com/go-stuff/mongostore) is by using 'go get' to install the dependency in your project.
 
 ```go
 go get "github.com/go-stuff/mongostore"
@@ -50,6 +50,10 @@ GORILLA_SESSION_ENC_KEY  (16 bytes)
 ```
 
 Once the keys added to the `environment`, sessions and cookies will be maintained each time `NewMongoStore` is run. Messages like `securecookie: the value is not valid` will be avoided, this happens when previously created cookies, still in the browser, used different authentication and encryption keys.
+
+## Example
+
+The [github.com/go-stuff/web](https://github.com/go-stuff/web) repository uses [github.com/go-stuff/mongostore](https://github.com/go-stuff/mongostore) you can this example code to see how it is used.
 
 ## License
 
