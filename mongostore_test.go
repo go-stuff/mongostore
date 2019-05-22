@@ -36,16 +36,11 @@ func TestMain(m *testing.M) {
 }
 
 func testsSetup() {
-
 	// set needed environment variables if none are set
-	// _, ok := os.LookupEnv("GORILLA_SESSION_AUTH_KEY")
-	// if !ok {
+	//"http://localhost:8080/"
+	os.Setenv("MONGODB_URI", "mongodb://mongo:27017")
 	os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
-	// }
-	// _, ok = os.LookupEnv("GORILLA_SESSION_ENC_KEY")
-	// if !ok {
 	os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
-	// }
 
 	// A Context carries a deadline, cancelation signal, and request-scoped values
 	// across API boundaries. Its methods are safe for simultaneous use by multiple
@@ -96,6 +91,7 @@ func TestNewMongoStore(t *testing.T) {
 	}
 
 	// with environment variables
+	os.Setenv("MONGODB_URI", "mongodb://mongo:27017")
 	os.Setenv("GORILLA_SESSION_AUTH_KEY", string(securecookie.GenerateRandomKey(32)))
 	os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
 
@@ -114,7 +110,7 @@ func TestNewMongoStore(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	req, _ := http.NewRequest("GET", "http://localhost:8080/", nil)
+	req, _ := http.NewRequest("GET", os.Getenv("MONGODB_URI"), nil)
 
 	_, err := mongostore.Get(req, "test-session")
 	if err != nil {
@@ -123,7 +119,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	req, _ := http.NewRequest("GET", "http://localhost:8080/", nil)
+	req, _ := http.NewRequest("GET", os.Getenv("MONGODB_URI"), nil)
 
 	// new session
 	_, err = mongostore.New(req, "test-session")
@@ -131,7 +127,7 @@ func TestNew(t *testing.T) {
 		t.Fatalf("failed to create new session: %v\n", err)
 	}
 
-	req, _ = http.NewRequest("GET", "http://localhost:8080/", nil)
+	req, _ = http.NewRequest("GET", os.Getenv("MONGODB_URI"), nil)
 
 	// existing session
 	_, err = mongostore.New(req, "test-session")
@@ -141,7 +137,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestSave(t *testing.T) {
-	req, _ := http.NewRequest("GET", "http://localhost:8080/", nil)
+	req, _ := http.NewRequest("GET", os.Getenv("MONGODB_URI"), nil)
 	res := httptest.NewRecorder()
 
 	// insert mongo
@@ -163,7 +159,7 @@ func TestSave(t *testing.T) {
 	}
 
 	// update mongo
-	req, _ = http.NewRequest("GET", "http://localhost:8080/", nil)
+	req, _ = http.NewRequest("GET", os.Getenv("MONGODB_URI"), nil)
 	req.Header.Add("Cookie", cookies[0])
 	res = httptest.NewRecorder()
 
@@ -185,7 +181,7 @@ func TestSave(t *testing.T) {
 	}
 
 	// expire mongo
-	req, _ = http.NewRequest("GET", "http://localhost:8080/", nil)
+	req, _ = http.NewRequest("GET", os.Getenv("MONGODB_URI"), nil)
 	req.Header.Add("Cookie", cookies[0])
 	res = httptest.NewRecorder()
 
