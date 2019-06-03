@@ -13,7 +13,7 @@ steps:
   environment:
     MONGODB_URI: mongodb://mongo:27017
   commands:
-  - go test -race -cover -covermode=atomic -coverpkg $(go list github.com/go-stuff/ldap/...) github.com/go-stuff/ldap/...
+  - go test -race -cover -covermode=atomic -coverpkg $(go list github.com/go-stuff/mongostore/...) github.com/go-stuff/mongostore/...
 
 - name: coverage
   image: plugins/codecov
