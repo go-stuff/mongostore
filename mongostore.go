@@ -214,15 +214,13 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 }
 
 func (ms *MongoStore) findInMongo(session *sessions.Session) error {
-	// get the session.ID as a mongo ObjectID type
-	oid, err := primitive.ObjectIDFromHex(session.ID)
-	if err != nil {
-		return err
-	}
-
 	// find the session in mongo using the ObjectID and put the result in singleResult
 	var singleResult interface{}
-	err = ms.col.FindOne(ms.ctx, bson.M{"_id": oid}).Decode(&singleResult)
+	err := ms.col.FindOne(ms.ctx,
+		bson.D{
+			{Key: "_id", Value: session.ID},
+		},
+	).Decode(&singleResult)
 	if err != nil {
 		return err
 	}
@@ -236,8 +234,12 @@ func (ms *MongoStore) findInMongo(session *sessions.Session) error {
 }
 
 func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
+	// create a new id to be used as the session.ID
+	session.ID = primitive.NewObjectID().Hex()
+
 	// load session.Values into a bson.D object
 	var insert bson.D
+	insert = append(insert, bson.E{Key: "_id", Value: session.ID})
 	for k, v := range session.Values {
 		insert = append(insert, bson.E{Key: k.(string), Value: v})
 	}
@@ -246,24 +248,15 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 	insert = append(insert, bson.E{Key: "expiresAt", Value: time.Now().UTC().Add(time.Duration(ms.Options.MaxAge) * time.Second)}) // primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
 
 	// insert session.Values into mongo and get the returned ObjectID
-	insertResult, err := ms.col.InsertOne(ms.ctx, insert)
+	_, err := ms.col.InsertOne(ms.ctx, insert)
 	if err != nil {
 		return err
 	}
-
-	// use the mongo ObjectID as the session.ID
-	session.ID = insertResult.InsertedID.(primitive.ObjectID).Hex()
 
 	return nil
 }
 
 func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
-	// get the session.ID as a mongo ObjectID type
-	oid, err := primitive.ObjectIDFromHex(session.ID)
-	if err != nil {
-		return err
-	}
-
 	// load session.Values into a bson.D object
 	var update bson.D
 	for k, v := range session.Values {
@@ -278,7 +271,14 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 	}
 
 	// update session.Values in mongo
-	_, err = ms.col.UpdateOne(ms.ctx, bson.M{"_id": oid}, bson.D{{Key: "$set", Value: update}})
+	_, err := ms.col.UpdateOne(ms.ctx,
+		bson.D{
+			{Key: "_id", Value: session.ID},
+		},
+		bson.D{
+			{Key: "$set", Value: update},
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -287,16 +287,12 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 }
 
 func (ms *MongoStore) deleteFromMongo(session *sessions.Session) error {
-	// get the session.ID as a mongo ObjectID type
-	oid, err := primitive.ObjectIDFromHex(session.ID)
-	if err != nil {
-		return err
-	}
-
 	// delete the document with ObjectID from mongo
-	_, err = ms.col.DeleteOne(ms.ctx, bson.D{
-		{Key: "_id", Value: oid},
-	})
+	_, err := ms.col.DeleteOne(ms.ctx,
+		bson.D{
+			{Key: "_id", Value: session.ID},
+		},
+	)
 	if err != nil {
 		return err
 	}
