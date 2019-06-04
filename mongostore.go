@@ -269,9 +269,9 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 	for k, v := range session.Values {
 		switch k.(string) {
 		case "modifiedAt":
-			update = append(update, bson.E{Key: k.(string), Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+			update = append(update, bson.E{Key: k.(string), Value: time.Now().UTC()}) //Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
 		case "expiresAt":
-			update = append(update, bson.E{Key: k.(string), Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+			update = append(update, bson.E{Key: k.(string), Value: time.Now().UTC().Add(time.Duration(ms.Options.MaxAge) * time.Second)}) //Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
 		default:
 			update = append(update, bson.E{Key: k.(string), Value: v})
 		}
