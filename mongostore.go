@@ -241,9 +241,9 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 	for k, v := range session.Values {
 		insert = append(insert, bson.E{Key: k.(string), Value: v})
 	}
-	insert = append(insert, bson.E{Key: "createdAt", Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
-	insert = append(insert, bson.E{Key: "modifiedAt", Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
-	insert = append(insert, bson.E{Key: "expiresAt", Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+	insert = append(insert, bson.E{Key: "createdAt", Value: time.Now().UTC()})                                                     // primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+	insert = append(insert, bson.E{Key: "modifiedAt", Value: time.Now().UTC()})                                                    // primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+	insert = append(insert, bson.E{Key: "expiresAt", Value: time.Now().UTC().Add(time.Duration(ms.Options.MaxAge) * time.Second)}) // primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
 
 	// insert session.Values into mongo and get the returned ObjectID
 	insertResult, err := ms.col.InsertOne(ms.ctx, insert)
