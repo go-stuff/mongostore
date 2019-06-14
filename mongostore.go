@@ -242,9 +242,9 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 	for k, v := range session.Values {
 		insert = append(insert, bson.E{Key: k.(string), Value: v})
 	}
-	insert = append(insert, bson.E{Key: "createdat", Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
-	insert = append(insert, bson.E{Key: "modifiedat", Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
-	insert = append(insert, bson.E{Key: "expiresat", Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+	insert = append(insert, bson.E{Key: "createdat", Value: time.Now().Unix()})                                                     // primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+	insert = append(insert, bson.E{Key: "modifiedat", Value: time.Now().Unix()})                                                    // primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+	insert = append(insert, bson.E{Key: "expiresat", Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).Unix()}) // primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
 
 	// insert session.Values into mongo and get the returned ObjectID
 	_, err := ms.col.InsertOne(ms.ctx, insert)
@@ -260,10 +260,10 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 	var update bson.D
 	for k, v := range session.Values {
 		switch k.(string) {
-		case "modifiedAt":
-			update = append(update, bson.E{Key: k.(string), Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
-		case "expiresAt":
-			update = append(update, bson.E{Key: k.(string), Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+		case "modifiedat":
+			update = append(update, bson.E{Key: k.(string), Value: time.Now().Unix()}) //Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+		case "expiresat":
+			update = append(update, bson.E{Key: k.(string), Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).Unix()}) //Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
 		default:
 			update = append(update, bson.E{Key: k.(string), Value: v})
 		}
