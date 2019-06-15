@@ -41,12 +41,18 @@ func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoS
 
 	// if environment variable is does not exist or is empty set a default
 	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
-		os.Setenv("GORILLA_SESSION_AUTH_KEY", base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)))
+		os.Setenv(
+			"GORILLA_SESSION_AUTH_KEY",
+			base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)),
+		)
 	}
 
 	// if environment variable is does not exist or is empty set a default
 	if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
-		os.Setenv("GORILLA_SESSION_ENC_KEY", base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(16)))
+		os.Setenv(
+			"GORILLA_SESSION_ENC_KEY",
+			base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(16)),
+		)
 	}
 
 	ms := &MongoStore{
@@ -239,13 +245,28 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 
 	// load session.Values into a bson.D object
 	var insert bson.D
-	insert = append(insert, bson.E{Key: "_id", Value: session.ID})
+	insert = append(insert, bson.E{
+		Key:   "_id",
+		Value: session.ID,
+	})
 	for k, v := range session.Values {
-		insert = append(insert, bson.E{Key: k.(string), Value: v})
+		insert = append(insert, bson.E{
+			Key:   k.(string),
+			Value: v,
+		})
 	}
-	insert = append(insert, bson.E{Key: "createdat", Value: time.Now().UTC()})
-	insert = append(insert, bson.E{Key: "modifiedat", Value: time.Now().UTC()})
-	insert = append(insert, bson.E{Key: "expiresat", Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC()})
+	insert = append(insert, bson.E{
+		Key:   "createdat",
+		Value: time.Now().UTC(),
+	})
+	insert = append(insert, bson.E{
+		Key:   "modifiedat",
+		Value: time.Now().UTC(),
+	})
+	insert = append(insert, bson.E{
+		Key:   "expiresat",
+		Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+	})
 
 	// insert session.Values into mongo and get the returned ObjectID
 	_, err := ms.col.InsertOne(ms.ctx, insert)
@@ -262,11 +283,20 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 	for k, v := range session.Values {
 		switch k.(string) {
 		case "modifiedat":
-			update = append(update, bson.E{Key: k.(string), Value: time.Now().UTC()}) //Value: primitive.DateTime(time.Now().Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+			update = append(update, bson.E{
+				Key:   k.(string),
+				Value: time.Now().UTC(),
+			})
 		case "expiresat":
-			update = append(update, bson.E{Key: k.(string), Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC()}) //Value: primitive.DateTime(time.Now().Add(time.Duration(ms.Options.MaxAge)*time.Second).Truncate(time.Millisecond).UnixNano() / int64(time.Millisecond))})
+			update = append(update, bson.E{
+				Key:   k.(string),
+				Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+			})
 		default:
-			update = append(update, bson.E{Key: k.(string), Value: v})
+			update = append(update, bson.E{
+				Key:   k.(string),
+				Value: v,
+			})
 		}
 	}
 

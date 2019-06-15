@@ -149,13 +149,19 @@ func initMongoStore(col *mongo.Collection, age int) (*mongostore.MongoStore, err
     // generate an authentication key to use if the GORILLA_SESSION_AUTH_KEY environment
     // variable is not set
     if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
-        os.Setenv("GORILLA_SESSION_AUTH_KEY", base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)))
+        os.Setenv(
+            "GORILLA_SESSION_AUTH_KEY", 
+            base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)),
+        )
     }
 
     // generate an encryption key to use if the GORILLA_SESSION_ENC_KEY environment
     // variable is not set
     if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
-        os.Setenv("GORILLA_SESSION_ENC_KEY", base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(16)))
+        os.Setenv(
+            "GORILLA_SESSION_ENC_KEY", 
+            base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(16)),
+        )
     }
 
     store := mongostore.NewMongoStore(
