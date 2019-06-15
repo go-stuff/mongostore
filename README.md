@@ -8,7 +8,7 @@
 
 ![Gopher Share](https://github.com/go-stuff/images/blob/master/GOPHER_SHARE_640x320.png)
 
-An implementation of Store using [Gorilla web toolkit sessions](https://github.com/gorilla/sessions) and the [MongoDB Go Driver](https://github.com/mongodb/mongo-go-driver)
+An implementation of Store using [Gorilla web toolkit](https://github.com/gorilla) and the [MongoDB Go Driver](https://github.com/mongodb/mongo-go-driver)
 
 ## Packages Imported
 
@@ -26,7 +26,7 @@ An implementation of Store using [Gorilla web toolkit sessions](https://github.c
 
 The recommended way to get started using [github.com/go-stuff/mongostore](https://github.com/go-stuff/mongostore) is by using 'go get' to install the dependency in your project.
 
-```go
+```bash
 go get "github.com/go-stuff/mongostore"
 ```
 
