@@ -179,7 +179,7 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 		if err != nil {
 			return err
 		}
-		if result.Map()["name"] == "modifiedat_1" {
+		if result.Map()["name"] == "ttl_1" {
 			foundTTLIndex = true
 		}
 	}
@@ -206,7 +206,7 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 			ms.ctx,
 			mongo.IndexModel{
 				Keys: bsonx.Doc{
-					{Key: "modifiedat", Value: bsonx.Int32(1)},
+					{Key: "ttl", Value: bsonx.Int32(1)},
 				},
 				Options: options.Index().
 					SetBackground(true).
@@ -279,6 +279,11 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 		//Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
 	})
 
+	insert = append(insert, bson.E{
+		Key:   "ttl",
+		Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+	})
+
 	// insert session.Values into mongo and get the returned ObjectID
 	_, err = ms.col.InsertOne(ms.ctx, insert)
 	if err != nil {
@@ -309,6 +314,11 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 				Key:   k.(string),
 				Value: expireTimestamp,
 				//Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+			})
+		case "ttl":
+			update = append(update, bson.E{
+				Key:   k.(string),
+				Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
 			})
 		default:
 			update = append(update, bson.E{
