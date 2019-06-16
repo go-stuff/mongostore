@@ -15,6 +15,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
+
+	"github.com/golang/protobuf/ptypes"
 )
 
 // MongoStore stores sessions in MongoDB.
@@ -257,19 +259,28 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 	}
 	insert = append(insert, bson.E{
 		Key:   "createdat",
-		Value: time.Now().UTC(),
+		Value: ptypes.TimestampNow(),
+		//Value: time.Now().UTC(),
 	})
 	insert = append(insert, bson.E{
 		Key:   "modifiedat",
-		Value: time.Now().UTC(),
+		Value: ptypes.TimestampNow(),
+		//Value: time.Now().UTC(),
 	})
+
+	expireTimestamp, err := ptypes.TimestampProto(time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC())
+	if err != nil {
+		return err
+	}
+
 	insert = append(insert, bson.E{
 		Key:   "expiresat",
-		Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+		Value: expireTimestamp,
+		//Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
 	})
 
 	// insert session.Values into mongo and get the returned ObjectID
-	_, err := ms.col.InsertOne(ms.ctx, insert)
+	_, err = ms.col.InsertOne(ms.ctx, insert)
 	if err != nil {
 		return err
 	}
@@ -278,6 +289,11 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 }
 
 func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
+	expireTimestamp, err := ptypes.TimestampProto(time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC())
+	if err != nil {
+		return err
+	}
+
 	// load session.Values into a bson.D object
 	var update bson.D
 	for k, v := range session.Values {
@@ -285,12 +301,14 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 		case "modifiedat":
 			update = append(update, bson.E{
 				Key:   k.(string),
-				Value: time.Now().UTC(),
+				Value: ptypes.TimestampNow(),
+				//Value: time.Now().UTC(),
 			})
 		case "expiresat":
 			update = append(update, bson.E{
 				Key:   k.(string),
-				Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+				Value: expireTimestamp,
+				//Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
 			})
 		default:
 			update = append(update, bson.E{
@@ -301,7 +319,7 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 	}
 
 	// update session.Values in mongo
-	_, err := ms.col.UpdateOne(ms.ctx,
+	_, err = ms.col.UpdateOne(ms.ctx,
 		bson.M{
 			"_id": session.ID,
 		},
