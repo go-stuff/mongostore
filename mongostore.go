@@ -179,6 +179,7 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 		if err != nil {
 			return err
 		}
+		log.Printf("indexes: %v\n", result.Map())
 		if result.Map()["name"] == "ttl_1" {
 			foundTTLIndex = true
 		}
@@ -281,7 +282,7 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 
 	insert = append(insert, bson.E{
 		Key:   "ttl",
-		Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+		Value: ptypes.TimestampNow(),
 	})
 
 	// insert session.Values into mongo and get the returned ObjectID
@@ -318,7 +319,7 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 		case "ttl":
 			update = append(update, bson.E{
 				Key:   k.(string),
-				Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
+				Value: ptypes.TimestampNow(),
 			})
 		default:
 			update = append(update, bson.E{
