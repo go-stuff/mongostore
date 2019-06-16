@@ -282,7 +282,7 @@ func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
 
 	insert = append(insert, bson.E{
 		Key:   "ttl",
-		Value: ptypes.TimestampNow(),
+		Value: Value: time.Now().UTC(),
 	})
 
 	// insert session.Values into mongo and get the returned ObjectID
@@ -319,7 +319,7 @@ func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
 		case "ttl":
 			update = append(update, bson.E{
 				Key:   k.(string),
-				Value: ptypes.TimestampNow(),
+				Value: Value: time.Now().UTC(),
 			})
 		default:
 			update = append(update, bson.E{
