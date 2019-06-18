@@ -117,6 +117,10 @@ func (ms *MongoStore) New(r *http.Request, name string) (*sessions.Session, erro
 		}
 	}
 
+	if err != nil {
+		log.Printf("ERROR > mongostore.go > New(): %s\n", err.Error())
+	}
+
 	return session, err
 }
 
@@ -127,6 +131,7 @@ func (ms *MongoStore) Save(r *http.Request, w http.ResponseWriter, session *sess
 		// insert into mongo
 		err := ms.insertInMongo(session)
 		if err != nil {
+			log.Printf("ERROR > mongostore.go > Save() > ms.insertInMongo(): %s\n", err.Error())
 			return err
 		}
 	} else {
@@ -134,12 +139,14 @@ func (ms *MongoStore) Save(r *http.Request, w http.ResponseWriter, session *sess
 			// if session is expired delete from mongo
 			err := ms.deleteFromMongo(session)
 			if err != nil {
+				log.Printf("ERROR > mongostore.go > Save() > ms.deleteFromMongo(): %s\n", err.Error())
 				return err
 			}
 		} else {
 			// else update mongo
 			err := ms.updateInMongo(session)
 			if err != nil {
+				log.Printf("ERROR > mongostore.go > Save() > ms.updateInMongo(): %s\n", err.Error())
 				return err
 			}
 		}
@@ -147,6 +154,7 @@ func (ms *MongoStore) Save(r *http.Request, w http.ResponseWriter, session *sess
 	// update cookie
 	encoded, err := securecookie.EncodeMulti(session.Name(), session.ID, ms.Codecs...)
 	if err != nil {
+		log.Printf("ERROR > mongostore.go > Save() > securecookie.EncodeMulti(): %s\n", err.Error())
 		return err
 	}
 	http.SetCookie(w, sessions.NewCookie(session.Name(), encoded, session.Options))
