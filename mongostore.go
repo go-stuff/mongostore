@@ -62,6 +62,7 @@ func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoS
 		Options: &sessions.Options{
 			Path:   "/",
 			MaxAge: maxAge, // 86400 * 30,
+			Secure: true,
 			HttpOnly: true,
 		},
 	}
