@@ -234,6 +234,9 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 }
 
 func (ms *MongoStore) findInMongo(session *sessions.Session) error {
+
+	log.Printf("INFO > mongostore.go > findInMongo() > session.ID: %s\n", session.ID)
+
 	// find the session in mongo using the ObjectID and put the result in singleResult
 	var singleResult interface{}
 	err := ms.col.FindOne(ms.ctx,
@@ -241,6 +244,7 @@ func (ms *MongoStore) findInMongo(session *sessions.Session) error {
 			"_id": session.ID,
 		}).Decode(&singleResult)
 	if err != nil {
+		log.Printf("ERROR > mongostore.go > findInMongo() > ms.col.FindOne(): %s\n", err.Error())
 		return err
 	}
 
