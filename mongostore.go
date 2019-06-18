@@ -179,7 +179,7 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 		if err != nil {
 			return err
 		}
-		log.Printf("indexes: %v\n", result.Map())
+		//log.Printf("indexes: %v\n", result.Map())
 		if result.Map()["name"] == "ttl_1" {
 			foundTTLIndex = true
 		}
