@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/securecookie"
@@ -57,12 +58,25 @@ func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoS
 		)
 	}
 
+	// only allow over HTTPS is defaulted to false
+	if os.Getenv("MONGOSTORE_HTTPS_ONLY") == "" {
+		os.Setenv(
+			"MONGOSTORE_HTTPS_ONLY",
+			"false",
+		)
+	}
+
+	https, err := strconv.ParseBool(os.Getenv("MONGOSTORE_HTTPS_ONLY"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ms := &MongoStore{
 		Codecs: securecookie.CodecsFromPairs(keyPairs...),
 		Options: &sessions.Options{
-			Path:   "/",
-			MaxAge: maxAge, // 86400 * 30,
-			Secure: true,
+			Path:     "/",
+			MaxAge:   maxAge, // 86400 * 30,
+			Secure:   https,
 			HttpOnly: true,
 		},
 	}
@@ -71,7 +85,7 @@ func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoS
 	ms.col = mc
 
 	// add TTL index if it does not exist
-	err := ms.insertTTLIndexInMongo()
+	err = ms.insertTTLIndexInMongo()
 	if err != nil {
 		log.Fatal(err)
 	}
