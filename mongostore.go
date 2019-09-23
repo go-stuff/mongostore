@@ -40,7 +40,7 @@ type MongoStore struct {
 // It is recommended to use an authentication key with 32 or 64 bytes.
 // The encryption key, if set, must be either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256 modes.
-func NewMongoStore(ctx context.Context, mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoStore {
+func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoStore {
 
 	// if environment variable is does not exist or is empty set a default
 	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
@@ -81,7 +81,7 @@ func NewMongoStore(ctx context.Context, mc *mongo.Collection, maxAge int, keyPai
 		},
 	}
 	ms.MaxAge(ms.Options.MaxAge)
-	ms.ctx = ctx
+	ms.ctx = context.Background()
 	ms.col = mc
 
 	// add TTL index if it does not exist
