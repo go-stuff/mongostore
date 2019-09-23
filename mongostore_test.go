@@ -18,6 +18,7 @@ import (
 )
 
 var err error
+var ctx context.Context
 var mongoclient *mongo.Client
 var mongostore *ms.MongoStore
 
@@ -44,8 +45,8 @@ func testsSetup() {
 	// A Context carries a deadline, cancelation signal, and request-scoped values
 	// across API boundaries. Its methods are safe for simultaneous use by multiple
 	// goroutines.
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	ctx, _ = context.WithTimeout(context.Background(), 30*time.Second)
+	//defer cancel()
 
 	// Connect does not do server discovery, use Ping method.
 	mongoclient, err = mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("MONGODB_URI")))
@@ -75,6 +76,7 @@ func TestNewMongoStore(t *testing.T) {
 
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
+		ctx,
 		mongoclient.Database("test").Collection("sessions_test"),
 		240,
 		[]byte(os.Getenv("GORILLA_SESSION_AUTH_KEY")),
@@ -104,6 +106,7 @@ func TestNewMongoStore(t *testing.T) {
 
 	// get a new mongostore
 	mongostore = ms.NewMongoStore(
+		ctx,
 		mongoclient.Database("test").Collection("sessions_test"),
 		240,
 		[]byte(os.Getenv("GORILLA_SESSION_AUTH_KEY")),
