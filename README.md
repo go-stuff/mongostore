@@ -13,14 +13,7 @@ An implementation of Store using [Gorilla web toolkit](https://github.com/gorill
 ## Packages Imported
 
 - Gorilla web tookit [github.com/gorilla](https://github.com/gorilla)
-  - [securecookie](https://github.com/gorilla/securecookie)
-  - [sessions](https://github.com/gorilla/sessions)
 - MongoDB Go Driver [github.com/mongodb/mongo-go-driver](https://github.com/mongodb/mongo-go-driver)
-  - [bson](https://github.com/mongodb/mongo-go-driver/bson)
-  - [bson/primitive](https://github.com/mongodb/mongo-go-driver/bson/primitive)
-  - [mongo](https://github.com/mongodb/mongo-go-driver/mongo)
-  - [mongo/options](https://github.com/mongodb/mongo-go-driver/mongo/options)
-  - [x/bsonx](https://github.com/mongodb/mongo-go-driver/x/bsonx)
 
 ## Installation
 
