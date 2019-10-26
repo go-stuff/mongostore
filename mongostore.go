@@ -2,33 +2,51 @@ package mongostore
 
 import (
 	"context"
-	"encoding/base64"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 
-	"github.com/golang/protobuf/ptypes"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
-// MongoStore stores sessions in MongoDB.
-type MongoStore struct {
-	Codecs  []securecookie.Codec
-	Options *sessions.Options
-	ctx     context.Context
-	col     *mongo.Collection
+// MongoSession is how sessions are stored in MongoDB.
+type MongoSession struct {
+	ID       primitive.ObjectID `bson:"_id,omitempty"`
+	Data     primitive.M        `bson:"data,omitempty"`
+	Modified primitive.DateTime `bson:"modified_at,omitempty"`
+	Expires  primitive.DateTime `bson:"expires_at,omitempty"`
+	TTL      primitive.DateTime `bson:"ttl,omitemtpy"`
 }
 
-// NewMongoStore returns a new MongoStore.
+// Options required for storing data in MongoDB.
+type Options struct {
+	Context    context.Context
+	Collection *mongo.Collection
+}
+
+// MongoStore stores sessions in MongoDB
+type MongoStore struct {
+	*Options
+}
+
+// Store stores sessions in Secure Cookies and MongoDB.
+type Store struct {
+	defaultCookie http.Cookie // default cookie settings
+	sessions.CookieStore
+	MongoStore
+}
+
+// NewStore uses cookies and mongo to store sessions.
 //
 // Keys are defined in pairs to allow key rotation, but the common case is
 // to set a single authentication key and optionally an encryption key.
@@ -40,57 +58,35 @@ type MongoStore struct {
 // It is recommended to use an authentication key with 32 or 64 bytes.
 // The encryption key, if set, must be either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256 modes.
-func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoStore {
-
-	// if environment variable is does not exist or is empty set a default
-	if os.Getenv("GORILLA_SESSION_AUTH_KEY") == "" {
-		os.Setenv(
-			"GORILLA_SESSION_AUTH_KEY",
-			base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)),
-		)
-	}
-
-	// if environment variable is does not exist or is empty set a default
-	if os.Getenv("GORILLA_SESSION_ENC_KEY") == "" {
-		os.Setenv(
-			"GORILLA_SESSION_ENC_KEY",
-			base64.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(16)),
-		)
-	}
-
-	// only allow over HTTPS is defaulted to false
-	if os.Getenv("MONGOSTORE_HTTPS_ONLY") == "" {
-		os.Setenv(
-			"MONGOSTORE_HTTPS_ONLY",
-			"false",
-		)
-	}
-
-	https, err := strconv.ParseBool(os.Getenv("MONGOSTORE_HTTPS_ONLY"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ms := &MongoStore{
-		Codecs: securecookie.CodecsFromPairs(keyPairs...),
-		Options: &sessions.Options{
-			Path:     "/",
-			MaxAge:   maxAge, // 86400 * 30,
-			Secure:   https,
-			HttpOnly: true,
+func NewStore(col *mongo.Collection, cookie http.Cookie, keyPairs ...[]byte) (*Store, error) {
+	s := &Store{
+		defaultCookie: cookie,
+		CookieStore: sessions.CookieStore{
+			Codecs: securecookie.CodecsFromPairs(keyPairs...),
+			Options: &sessions.Options{
+				Path:     cookie.Path,
+				Domain:   cookie.Domain,
+				MaxAge:   cookie.MaxAge,
+				Secure:   cookie.Secure,
+				HttpOnly: cookie.HttpOnly,
+				SameSite: cookie.SameSite,
+			},
+		},
+		MongoStore: MongoStore{
+			Options: &Options{
+				Context:    context.Background(),
+				Collection: col,
+			},
 		},
 	}
-	ms.MaxAge(ms.Options.MaxAge)
-	ms.ctx = context.Background()
-	ms.col = mc
 
 	// add TTL index if it does not exist
-	err = ms.insertTTLIndexInMongo()
+	err := s.insertTTL()
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("[ERROR] adding time to live index: %v", err)
 	}
 
-	return ms
+	return s, nil
 }
 
 // Get returns a session for the given name after adding it to the registry.
@@ -100,8 +96,8 @@ func NewMongoStore(mc *mongo.Collection, maxAge int, keyPairs ...[]byte) *MongoS
 //
 // It returns a new session and an error if the session exists but could
 // not be decoded.
-func (ms *MongoStore) Get(r *http.Request, name string) (*sessions.Session, error) {
-	return sessions.GetRegistry(r).Get(ms, name)
+func (s *Store) Get(r *http.Request, name string) (*sessions.Session, error) {
+	return sessions.GetRegistry(r).Get(s, name)
 }
 
 // New returns a session for the given name without adding it to the registry.
@@ -109,103 +105,115 @@ func (ms *MongoStore) Get(r *http.Request, name string) (*sessions.Session, erro
 // The difference between New() and Get() is that calling New() twice will
 // decode the session data twice, while Get() registers and reuses the same
 // decoded session after the first call.
-func (ms *MongoStore) New(r *http.Request, name string) (*sessions.Session, error) {
-	session := sessions.NewSession(ms, name)
-	opts := *ms.Options
-	session.Options = &opts
+func (s *Store) New(r *http.Request, name string) (*sessions.Session, error) {
+	session := sessions.NewSession(s, name)
+	session.Options = s.CookieStore.Options
+	session.Options.MaxAge = s.defaultCookie.MaxAge
 	session.IsNew = true
-	var err error
-	c, errCookie := r.Cookie(name)
 
-	// if the session cookie already exits
-	if errCookie == nil {
-		err = securecookie.DecodeMulti(name, c.Value, &session.ID, ms.Codecs...)
+	// get session cookie
+	c, err := r.Cookie(name)
 
-		// using the session.ID from the cookie decode the session.Values from mongo
-		if err == nil {
-			err = ms.findInMongo(session)
-			// found existing session in mongo, set IsNew to false
-			if err == nil {
-				session.IsNew = false
-			}
-		}
+	// no cookie
+	if errors.Is(err, http.ErrNoCookie) {
+		log.Printf("[INFO] no cookie: %s", err.Error())
+		return session, nil
 	}
 
+	// decode the session.ID in the cookie and use it to find the existing session in mongo
+	err = securecookie.DecodeMulti(name, c.Value, &session.ID, s.CookieStore.Codecs...)
 	if err != nil {
-		log.Printf("ERROR > mongostore.go > New(): %s\n", err.Error())
+		return nil, fmt.Errorf("[ERROR] decoding cookie: %w", err)
 	}
 
-	return session, err
+	// if the session does not exist in mongo, expire the cookies and mark the session as new
+	err = s.findOne(session)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		log.Printf("[INFO] no session in mongo: %s", err.Error())
+		return session, nil
+	}
+
+	// flag as an existing session
+	session.IsNew = false
+
+	return session, nil
 }
 
 // Save adds a single session to the response.
-func (ms *MongoStore) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
-	_, errCookie := r.Cookie(session.Name())
-	if errCookie != nil {
-		// insert into mongo
-		err := ms.insertInMongo(session)
+func (s *Store) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
+	// expired session
+	if session.Options.MaxAge == -1 {
+		res, err := s.deleteOne(session)
 		if err != nil {
-			log.Printf("ERROR > mongostore.go > Save() > ms.insertInMongo(): %s\n", err.Error())
-			return err
+			return fmt.Errorf("[ERROR] deleting mongo session: %v", err)
 		}
-	} else {
-		if session.Options.MaxAge == -1 {
-			// if session is expired delete from mongo
-			err := ms.deleteFromMongo(session)
-			if err != nil {
-				log.Printf("ERROR > mongostore.go > Save() > ms.deleteFromMongo(): %s\n", err.Error())
-				return err
-			}
-		} else {
-			// else update mongo
-			err := ms.updateInMongo(session)
-			if err != nil {
-				log.Printf("ERROR > mongostore.go > Save() > ms.updateInMongo(): %s\n", err.Error())
-				return err
-			}
-		}
+		log.Printf("[INFO] %d session(s) deleted", res.DeletedCount)
+
 	}
-	// update cookie
-	encoded, err := securecookie.EncodeMulti(session.Name(), session.ID, ms.Codecs...)
+
+	// new session
+	if session.IsNew && session.Options.MaxAge != -1 {
+		res, err := s.insertOne(session)
+		if err != nil {
+			return fmt.Errorf("[ERROR] inserting mongo session: %v", err)
+		}
+		log.Printf("[INFO] session id: %s, inserted", res.InsertedID.(primitive.ObjectID).Hex())
+		session.ID = res.InsertedID.(primitive.ObjectID).Hex()
+	}
+
+	// existing session
+	if !session.IsNew && session.Options.MaxAge != -1 {
+		res, err := s.updateOne(session)
+		if err != nil {
+			return fmt.Errorf("[ERROR] updating mongo session: %v", err)
+		}
+		log.Printf("[INFO] %d session(s) updated", res.ModifiedCount)
+	}
+
+	// encode the cookie with only the session.ID, session.Values are never encoded with
+	// to the cookie (client side) they are only stored in mongo (server side)
+	encoded, err := securecookie.EncodeMulti(session.Name(), session.ID, s.CookieStore.Codecs...)
 	if err != nil {
-		log.Printf("ERROR > mongostore.go > Save() > securecookie.EncodeMulti(): %s\n", err.Error())
-		return err
+		return fmt.Errorf("[ERROR] saving cookie: %v", err)
 	}
-	http.SetCookie(w, sessions.NewCookie(session.Name(), encoded, session.Options))
+
+	// update the cookie
+	http.SetCookie(w, sessions.NewCookie(session.Name(), encoded, s.CookieStore.Options))
 
 	return nil
 }
 
-// MaxAge sets the maximum age for the store and the underlying cookie
-// implementation. Individual sessions can be deleted by setting Options.MaxAge
-// = -1 for that session.
-func (ms *MongoStore) MaxAge(age int) {
-	ms.Options.MaxAge = age
+func (s *Store) insertTTL() error {
+	var foundTTLIndex bool
 
-	// Set the maxAge for each securecookie instance.
-	for _, codec := range ms.Codecs {
-		if sc, ok := codec.(*securecookie.SecureCookie); ok {
-			sc.MaxAge(age)
-		}
-	}
-}
-
-func (ms *MongoStore) insertTTLIndexInMongo() error {
-	// search for an index-ttl index in this collection
-	cursor, err := ms.col.Indexes().List(ms.ctx)
+	// get indexes from mongo into the cursor
+	cursor, err := s.MongoStore.Collection.Indexes().List(s.MongoStore.Context)
 	if err != nil {
 		return err
 	}
-	var foundTTLIndex bool
-	for cursor.Next(ms.ctx) {
-		var result bson.D
-		err := cursor.Decode(&result)
+
+	// use the cursor to iterate each index
+	for cursor.Next(s.MongoStore.Context) {
+
+		// decode the current index
+		var index bson.D
+		err := cursor.Decode(&index)
 		if err != nil {
 			return err
 		}
-		//log.Printf("indexes: %v\n", result.Map())
-		if result.Map()["name"] == "ttl_1" {
-			foundTTLIndex = true
+
+		// is the index empty
+		if len(index) > 0 {
+
+			// does index contain a key
+			key := index.Map()["key"]
+
+			if key != nil {
+				// does the key contain ttl
+				if key.(bson.D).Map()["ttl"] != nil {
+					foundTTLIndex = true
+				}
+			}
 		}
 	}
 
@@ -227,16 +235,19 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 	//
 	// The _id field does not support TTL indexes.
 	if !foundTTLIndex {
-		_, err = ms.col.Indexes().CreateOne(
-			ms.ctx,
+		_, err = s.MongoStore.Collection.Indexes().CreateOne(
+			s.MongoStore.Context,
 			mongo.IndexModel{
 				Keys: bsonx.Doc{
-					{Key: "ttl", Value: bsonx.Int32(1)},
+					bsonx.Elem{
+						Key:   "ttl",
+						Value: bsonx.Int32(1),
+					},
 				},
 				Options: options.Index().
 					SetBackground(true).
 					SetSparse(true).
-					SetExpireAfterSeconds(int32(ms.Options.MaxAge)),
+					SetExpireAfterSeconds(int32(s.defaultCookie.MaxAge)),
 			},
 		)
 		if err != nil {
@@ -247,141 +258,122 @@ func (ms *MongoStore) insertTTLIndexInMongo() error {
 	return nil
 }
 
-func (ms *MongoStore) findInMongo(session *sessions.Session) error {
-
-	log.Printf("INFO > mongostore.go > findInMongo() > session.ID: %s\n", session.ID)
-
-	// find the session in mongo using the ObjectID and put the result in singleResult
-	var singleResult interface{}
-	err := ms.col.FindOne(ms.ctx,
-		bson.M{
-			"_id": session.ID,
-		}).Decode(&singleResult)
+func (s *Store) findOne(session *sessions.Session) error {
+	// get the mongo _id from the cookie
+	oid, err := primitive.ObjectIDFromHex(session.ID)
 	if err != nil {
-		log.Printf("ERROR > mongostore.go > findInMongo() > ms.col.FindOne(): %s\n", err.Error())
 		return err
 	}
 
-	// use session.Values values from mongo
-	for k, v := range singleResult.(primitive.D).Map() {
+	// initialize an empty struct for FindOne to fill
+	mongoSession := &MongoSession{}
+
+	// find the session in mongo using the _id and put the result in the empty struct
+	err = s.MongoStore.Collection.FindOne(
+		s.MongoStore.Context,
+		bson.M{
+			"_id": oid,
+		},
+	).Decode(mongoSession)
+
+	// no session found
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return fmt.Errorf("[INFO] no session found: %w", err)
+	}
+
+	// something went wrong with the mongo search
+	if err != nil {
+		return fmt.Errorf("[ERROR] finding session: %w", err)
+	}
+
+	// fill session.Values from mongo
+	for k, v := range mongoSession.Data {
 		session.Values[k] = v
 	}
 
 	return nil
 }
 
-func (ms *MongoStore) insertInMongo(session *sessions.Session) error {
-	// create a new id to be used as the session.ID
-	session.ID = primitive.NewObjectID().Hex()
+func (s *Store) insertOne(session *sessions.Session) (*mongo.InsertOneResult, error) {
+	// initialize a mongo session to insert
+	mongoSession := &MongoSession{
+		Data:     make(map[string]interface{}, len(session.Values)),
+		Modified: primitive.NewDateTimeFromTime(time.Now()),
+		Expires:  primitive.NewDateTimeFromTime(time.Now().Add(time.Duration(s.defaultCookie.MaxAge) * time.Second)),
+		TTL:      primitive.NewDateTimeFromTime(time.Now()),
+	}
 
-	// load session.Values into a bson.D object
-	var insert bson.D
-	insert = append(insert, bson.E{
-		Key:   "_id",
-		Value: session.ID,
-	})
+	// get current session.Values
 	for k, v := range session.Values {
-		insert = append(insert, bson.E{
-			Key:   k.(string),
-			Value: v,
-		})
+		mongoSession.Data[k.(string)] = v
 	}
-	insert = append(insert, bson.E{
-		Key:   "createdat",
-		Value: ptypes.TimestampNow(),
-		//Value: time.Now().UTC(),
-	})
-	insert = append(insert, bson.E{
-		Key:   "modifiedat",
-		Value: ptypes.TimestampNow(),
-		//Value: time.Now().UTC(),
-	})
 
-	expireTimestamp, err := ptypes.TimestampProto(time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC())
+	// insert the mongo session
+	res, err := s.MongoStore.Collection.InsertOne(
+		s.MongoStore.Context,
+		mongoSession,
+	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	insert = append(insert, bson.E{
-		Key:   "expiresat",
-		Value: expireTimestamp,
-		//Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
-	})
-
-	insert = append(insert, bson.E{
-		Key:   "ttl",
-		Value: time.Now().UTC(),
-	})
-
-	// insert session.Values into mongo and get the returned ObjectID
-	_, err = ms.col.InsertOne(ms.ctx, insert)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return res, nil
 }
 
-func (ms *MongoStore) updateInMongo(session *sessions.Session) error {
-	expireTimestamp, err := ptypes.TimestampProto(time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC())
+func (s *Store) updateOne(session *sessions.Session) (*mongo.UpdateResult, error) {
+	// get the mongo _id from the cookie
+	oid, err := primitive.ObjectIDFromHex(session.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// load session.Values into a bson.D object
-	var update bson.D
+	// initialize a mongo session to insert
+	mongoSession := &MongoSession{
+		Data:     make(map[string]interface{}, len(session.Values)),
+		Modified: primitive.NewDateTimeFromTime(time.Now()),
+		Expires:  primitive.NewDateTimeFromTime(time.Now().Add(time.Duration(s.defaultCookie.MaxAge) * time.Second)),
+		TTL:      primitive.NewDateTimeFromTime(time.Now()),
+	}
+
+	// get current session.Values
 	for k, v := range session.Values {
-		switch k.(string) {
-		case "modifiedat":
-			update = append(update, bson.E{
-				Key:   k.(string),
-				Value: ptypes.TimestampNow(),
-				//Value: time.Now().UTC(),
-			})
-		case "expiresat":
-			update = append(update, bson.E{
-				Key:   k.(string),
-				Value: expireTimestamp,
-				//Value: time.Now().Add(time.Duration(ms.Options.MaxAge) * time.Second).UTC(),
-			})
-		case "ttl":
-			update = append(update, bson.E{
-				Key:   k.(string),
-				Value: time.Now().UTC(),
-			})
-		default:
-			update = append(update, bson.E{
-				Key:   k.(string),
-				Value: v,
-			})
-		}
+		mongoSession.Data[k.(string)] = v
 	}
 
-	// update session.Values in mongo
-	_, err = ms.col.UpdateOne(ms.ctx,
+	// update session.Values in mongo usig the object id
+	res, err := s.MongoStore.Collection.UpdateOne(
+		s.MongoStore.Context,
 		bson.M{
-			"_id": session.ID,
+			"_id": oid,
 		},
 		bson.M{
-			"$set": update,
-		})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (ms *MongoStore) deleteFromMongo(session *sessions.Session) error {
-	// delete the document with ObjectID from mongo
-	_, err := ms.col.DeleteOne(ms.ctx,
-		bson.M{
-			"_id": session.ID,
+			"$set": mongoSession,
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return res, nil
+}
+
+func (s *Store) deleteOne(session *sessions.Session) (*mongo.DeleteResult, error) {
+	// convert session id to a mongo object id
+	oid, err := primitive.ObjectIDFromHex(session.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// delete session using the object id
+	res, err := s.MongoStore.Collection.DeleteOne(
+		s.MongoStore.Context,
+		bson.M{
+			"_id": oid,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

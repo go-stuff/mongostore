@@ -13,13 +13,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 
-	ms "github.com/go-stuff/mongostore"
+	"github.com/go-stuff/mongostore"
 	"github.com/gorilla/securecookie"
 )
 
 var err error
 var mongoclient *mongo.Client
-var mongostore *ms.MongoStore
+var store *mongostore.Store
 
 func TestMain(m *testing.M) {
 	// connect to database
@@ -67,26 +67,37 @@ func testsTeardown() {
 	}
 }
 
-func TestNewMongoStore(t *testing.T) {
+func TestNewStore(t *testing.T) {
 	// without environment variables
 	// os.Clearenv()
 	os.Setenv("GORILLA_SESSION_AUTH_KEY", "")
 	os.Setenv("GORILLA_SESSION_ENC_KEY", "")
 
-	// get a new mongostore
-	mongostore = ms.NewMongoStore(
-		mongoclient.Database("test").Collection("sessions_test"),
-		240,
+	// get a new store
+	store, err = mongostore.NewStore(
+		mongoclient.Database("test-database").Collection("sessions_test"),
+		http.Cookie{
+			Path:     "/",
+			Domain:   "",
+			MaxAge:   240,
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteStrictMode,
+		},
 		[]byte(os.Getenv("GORILLA_SESSION_AUTH_KEY")),
 		[]byte(os.Getenv("GORILLA_SESSION_ENC_KEY")),
 	)
 
-	if mongostore == nil {
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store == nil {
 		t.Fatal("expected to fail with no environment variables")
 	}
 
 	// without TTL index
-	_, err = mongoclient.Database("test").Collection("sessions_test").Indexes().DropAll(context.TODO())
+	_, err = mongoclient.Database("test-database").Collection("sessions_test").Indexes().DropAll(context.TODO())
 	if err != nil {
 		t.Fatalf("failed to drop mongo indexes: %v\n", err)
 	}
@@ -102,24 +113,35 @@ func TestNewMongoStore(t *testing.T) {
 		os.Setenv("GORILLA_SESSION_ENC_KEY", string(securecookie.GenerateRandomKey(16)))
 	}
 
-	// get a new mongostore
-	mongostore = ms.NewMongoStore(
-		mongoclient.Database("test").Collection("sessions_test"),
-		240,
+	// get a new store
+	store, err = mongostore.NewStore(
+		mongoclient.Database("test-database").Collection("sessions_test"),
+		http.Cookie{
+			Path:     "/",
+			Domain:   "",
+			MaxAge:   240,
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteStrictMode,
+		},
 		[]byte(os.Getenv("GORILLA_SESSION_AUTH_KEY")),
 		[]byte(os.Getenv("GORILLA_SESSION_ENC_KEY")),
 	)
 
-	// if mongostore is nil, throw an error
-	if mongostore == nil {
-		t.Fatal("failed to create new mongostore")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// if store is nil, throw an error
+	if store == nil {
+		t.Fatal("failed to create new store")
 	}
 }
 
 func TestGet(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://localhost:8080/", nil)
 
-	_, err := mongostore.Get(req, "test-session")
+	_, err := store.Get(req, "test-session")
 	if err != nil {
 		t.Fatalf("failed to get session: %v\n", err)
 	}
@@ -129,7 +151,7 @@ func TestNew(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://localhost:8080/", nil)
 
 	// new session
-	_, err = mongostore.New(req, "test-session")
+	_, err = store.New(req, "test-session")
 	if err != nil {
 		t.Fatalf("failed to create new session: %v\n", err)
 	}
@@ -137,7 +159,7 @@ func TestNew(t *testing.T) {
 	req, _ = http.NewRequest("GET", "http://localhost:8080/", nil)
 
 	// existing session
-	_, err = mongostore.New(req, "test-session")
+	_, err = store.New(req, "test-session")
 	if err != nil {
 		t.Fatalf("failed to create new session: %v\n", err)
 	}
@@ -148,12 +170,12 @@ func TestSave(t *testing.T) {
 	res := httptest.NewRecorder()
 
 	// insert mongo
-	session, err := mongostore.Get(req, "test-session")
+	session, err := store.Get(req, "test-session")
 	if err != nil {
 		t.Fatalf("failed to get session: %v\n", err)
 	}
 	session.Values["test"] = "testdata"
-	err = mongostore.Save(req, res, session)
+	err = store.Save(req, res, session)
 	if err != nil {
 		t.Fatalf("failed to insert session: %v\n", err)
 	}
@@ -170,12 +192,12 @@ func TestSave(t *testing.T) {
 	req.Header.Add("Cookie", cookies[0])
 	res = httptest.NewRecorder()
 
-	session, err = mongostore.Get(req, "test-session")
+	session, err = store.Get(req, "test-session")
 	if err != nil {
 		t.Fatalf("failed to get session: %v\n", err)
 	}
 	session.Options.MaxAge = 7357
-	err = mongostore.Save(req, res, session)
+	err = store.Save(req, res, session)
 	if err != nil {
 		t.Fatal("failed to update session", err)
 	}
@@ -192,21 +214,21 @@ func TestSave(t *testing.T) {
 	req.Header.Add("Cookie", cookies[0])
 	res = httptest.NewRecorder()
 
-	session, err = mongostore.Get(req, "test-session")
+	session, err = store.Get(req, "test-session")
 	if err != nil {
 		t.Fatalf("failed to get session: %v\n", err)
 	}
 	session.Options.MaxAge = -1
-	err = mongostore.Save(req, res, session)
+	err = store.Save(req, res, session)
 	if err != nil {
 		t.Fatal("failed to expire session", err)
 	}
 
 }
 
-func TestMaxAge(t *testing.T) {
-	mongostore.MaxAge(7357)
-	if mongostore.Options.MaxAge != 7357 {
-		t.Fatalf("failed to set MaxAge: %v\n", err)
-	}
-}
+// func TestMaxAge(t *testing.T) {
+// 	store.MaxAge(7357)
+// 	if store.Options.MaxAge != 7357 {
+// 		t.Fatalf("failed to set MaxAge: %v\n", err)
+// 	}
+// }

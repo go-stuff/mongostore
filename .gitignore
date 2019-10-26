@@ -12,3 +12,5 @@
 *.out
 
 converage.txt
+
+vendor/
